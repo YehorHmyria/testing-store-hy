@@ -52,27 +52,15 @@
   data-desktop-layout="{{ section.settings.gallery_layout }}"
 >
   <div id="GalleryStatus-{{ section.id }}" class="visually-hidden" role="status"></div>
-  <slider-component id="GalleryViewer-{{ section.id }}" class="slider-mobile-gutter">
-    <a class="skip-to-content-link button visually-hidden quick-add-hidden" href="#ProductInfo-{{ section.id }}">
-      {{ 'accessibility.skip_to_product_info' | t }}
-    </a>
-    <ul
-      id="Slider-Gallery-{{ section.id }}"
-      class="product__media-list contains-media grid grid--peek list-unstyled slider slider--mobile"
-      role="list"
-    >
+  <div class="swiper product-swiper-{{ section.id }}">
+    <div class="swiper-wrapper">
       {%- if product.selected_or_first_available_variant.featured_media != null -%}
         {%- assign featured_media = product.selected_or_first_available_variant.featured_media -%}
-        <li
-          id="Slide-{{ section.id }}-{{ featured_media.id }}"
-          class="product__media-item grid__item slider__slide is-active{% if single_media_visible %} product__media-item--single{% endif %}{% if featured_media.media_type != 'image' %} product__media-item--full{% endif %}{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--fade-in{% endif %}"
-          data-media-id="{{ section.id }}-{{ featured_media.id }}"
-        >
-          {%- assign media_position = 1 -%}
+        <div class="swiper-slide">
           {% render 'product-thumbnail',
             media: featured_media,
             media_count: media_count,
-            position: media_position,
+            position: 1,
             desktop_layout: section.settings.gallery_layout,
             mobile_layout: section.settings.mobile_thumbnails,
             loop: section.settings.enable_video_looping,
@@ -83,8 +71,9 @@
             constrain_to_viewport: section.settings.constrain_to_viewport,
             lazy_load: false
           %}
-        </li>
+        </div>
       {%- endif -%}
+      {%- assign media_position = 1 -%}
       {%- for media in product.media -%}
         {% if media_position >= limit
           or media_position >= 1
@@ -93,20 +82,9 @@
         %}
           {% continue %}
         {% endif %}
-
         {%- unless media.id == product.selected_or_first_available_variant.featured_media.id -%}
-          <li
-            id="Slide-{{ section.id }}-{{ media.id }}"
-            class="product__media-item grid__item slider__slide{% if single_media_visible %} product__media-item--single{% endif %}{% if product.selected_or_first_available_variant.featured_media == nil and forloop.index == 1 %} is-active{% endif %}{% if media.media_type != 'image' %} product__media-item--full{% endif %}{% if settings.animations_reveal_on_scroll %} scroll-trigger animate--fade-in{% endif %}"
-            data-media-id="{{ section.id }}-{{ media.id }}"
-          >
-            {%- liquid
-              assign media_position = media_position | default: 0 | plus: 1
-              assign lazy_load = false
-              if media_position > 1
-                assign lazy_load = true
-              endif
-            -%}
+          {%- assign media_position = media_position | default: 0 | plus: 1 -%}
+          <div class="swiper-slide">
             {% render 'product-thumbnail',
               media: media,
               media_count: media_count,
@@ -119,41 +97,48 @@
               media_width: media_width,
               media_fit: section.settings.media_fit,
               constrain_to_viewport: section.settings.constrain_to_viewport,
-              lazy_load: lazy_load
+              lazy_load: media_position > 1
             %}
-          </li>
+          </div>
         {%- endunless -%}
       {%- endfor -%}
-    </ul>
-    <div class="slider-buttons quick-add-hidden{% if hide_mobile_slider %} small-hide{% endif %}">
-      <button
-        type="button"
-        class="slider-button slider-button--prev"
-        name="previous"
-        aria-label="{{ 'general.slider.previous_slide' | t }}"
-      >
-        <span class="svg-wrapper">
-          {{- 'icon-caret.svg' | inline_asset_content -}}
-        </span>
-      </button>
-      <div class="slider-counter caption">
-        <span class="slider-counter--current">1</span>
-        <span aria-hidden="true"> / </span>
-        <span class="visually-hidden">{{ 'general.slider.of' | t }}</span>
-        <span class="slider-counter--total">{{ media_count }}</span>
-      </div>
-      <button
-        type="button"
-        class="slider-button slider-button--next"
-        name="next"
-        aria-label="{{ 'general.slider.next_slide' | t }}"
-      >
-        <span class="svg-wrapper">
-          {{- 'icon-caret.svg' | inline_asset_content -}}
-        </span>
-      </button>
     </div>
-  </slider-component>
+    {% if section.settings.swiper_navigation %}
+      <div class="swiper-button-next"></div>
+      <div class="swiper-button-prev"></div>
+    {% endif %}
+    {% if section.settings.swiper_pagination %}
+      <div class="swiper-pagination"></div>
+    {% endif %}
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.Swiper) {
+        new Swiper('.product-swiper-{{ section.id }}', {
+          slidesPerView: {{ section.settings.swiper_slides_per_view_mobile | default: 1 }},
+          spaceBetween: {{ section.settings.swiper_space_between | default: 8 }},
+          pagination: {
+            el: '.product-swiper-{{ section.id }} .swiper-pagination',
+            clickable: true,
+            enabled: {{ section.settings.swiper_pagination | json }}
+          },
+          navigation: {
+            nextEl: '.product-swiper-{{ section.id }} .swiper-button-next',
+            prevEl: '.product-swiper-{{ section.id }} .swiper-button-prev',
+            enabled: {{ section.settings.swiper_navigation | json }}
+          },
+          breakpoints: {
+            750: {
+              slidesPerView: {{ section.settings.swiper_slides_per_view_tablet | default: 1 }}
+            },
+            990: {
+              slidesPerView: {{ section.settings.swiper_slides_per_view_desktop | default: 1 }}
+            }
+          }
+        });
+      }
+    });
+  </script>
   {%- if first_3d_model -%}
     <button
       class="button button--full-width product__xr-button"
